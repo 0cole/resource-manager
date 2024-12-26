@@ -21,6 +21,10 @@ fn get_individual_cpus(sys: &System) -> Vec<&Cpu> {
 }
 
 fn color_severity(s: String, num: f32) -> Span<'static> {
+    // change the color of s based on which category the percentge is in
+    // >75% -> Red
+    // >50% -> Yellow
+    // rest -> Green
     if num > 75.5 {
         return Span::styled(s, Style::default().fg(Color::LightRed));
     } else if num > 50.0 {
@@ -29,13 +33,14 @@ fn color_severity(s: String, num: f32) -> Span<'static> {
     return Span::styled(s, Style::default().fg(Color::LightGreen));
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn render_individual_cpu<B: Backend>(
     f: &mut Frame<B>,
     cpu: &Cpu,
     percent_chunk: Rect,
     bar_chunk: Rect,
 ) {
-    // render percentage chunk
+    // render percentage chunk (CPU #: XX.XX%)
     let prefix = Span::styled(format!("CPU {}: ", cpu.name()), Style::default());
     let percent = color_severity(format!("{:.2}%", cpu.cpu_usage()), cpu.cpu_usage());
     let formatted_percent = Spans::from(vec![prefix, percent]);
@@ -83,9 +88,11 @@ fn render_cpu_stats<B: Backend>(f: &mut Frame<B>, sys: &System, cpus: &[&Cpu], c
     // render individual cpu stats
     let num_cpus = cpus.len();
     let constraints = vec![Constraint::Length(1); num_cpus];
+
     let individual_cpu_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(0)
+        //                         CPU #: XX.XX%    [|||       ]
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
         .split(cpu_chunk[1]);
 
@@ -118,10 +125,21 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
     let outer_block = Block::default().title("Stats").borders(Borders::ALL);
     f.render_widget(outer_block, chunk);
 
+    // splits the stats chunk into three chunks
+    // 1. CPU
+    // 2. Memory
+    // 3. Something else
     let sub_chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .constraints(
+            [
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ]
+            .as_ref(),
+        )
         .split(chunk);
 
     // render cpu stats
