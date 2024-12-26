@@ -86,7 +86,12 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
 
         let rounded = cpu.cpu_usage().round() as u32;
         let num_bars: usize = rounded.div_ceil(10) as usize;
-        let severity_bar = color_severity("|".repeat(num_bars), cpu.cpu_usage());
+        let mut severity_string = "|".repeat(num_bars);
+        while severity_string.len() < 10 {
+            severity_string.push(' ');
+        }
+
+        let severity_bar = color_severity(severity_string, cpu.cpu_usage());
         let severity_span = Spans::from(vec![
             Span::styled("[ ".to_string(), Style::default()),
             severity_bar,
