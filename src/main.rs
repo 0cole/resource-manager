@@ -26,7 +26,7 @@ fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System) -> Result<()> {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .margin(1)
-            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)].as_ref())
+            .constraints([Constraint::Length(40), Constraint::Length(50)].as_ref())
             .split(f.size());
 
         stats::create_stats_chunk(f, sys, chunks[0]);

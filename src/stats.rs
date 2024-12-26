@@ -202,7 +202,7 @@ fn render_mem_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     ]);
     let bar_paragraph = Paragraph::new(severity_span)
         .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
+        .alignment(Alignment::Right);
     f.render_widget(bar_paragraph, mem_num_chunks[0]);
 
     // render total memory
@@ -302,7 +302,7 @@ fn render_swp_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     ]);
     let bar_paragraph = Paragraph::new(severity_span)
         .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
+        .alignment(Alignment::Right);
     f.render_widget(bar_paragraph, swp_num_chunks[0]);
 
     // render total swp
