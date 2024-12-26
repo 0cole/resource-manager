@@ -45,7 +45,7 @@ fn render_label_value<B: Backend>(
         .alignment(Alignment::Left);
     let value_paragraph = Paragraph::new(Span::styled(value, Style::default()))
         .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
+        .alignment(Alignment::Right);
     f.render_widget(label_paragraph, label_chunk);
     f.render_widget(value_paragraph, value_chunk);
 }
@@ -81,7 +81,7 @@ fn render_individual_cpu<B: Backend>(
     ]);
     let bar_paragraph = Paragraph::new(severity_span)
         .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
+        .alignment(Alignment::Right);
     f.render_widget(bar_paragraph, bar_chunk);
 }
 
