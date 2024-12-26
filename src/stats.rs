@@ -33,6 +33,23 @@ fn color_severity(s: String, num: f32) -> Span<'static> {
     return Span::styled(s, Style::default().fg(Color::LightGreen));
 }
 
+fn render_label_value<B: Backend>(
+    f: &mut Frame<B>,
+    label: &str,
+    value: String,
+    label_chunk: Rect,
+    value_chunk: Rect,
+) {
+    let label_paragraph = Paragraph::new(Span::styled(label, Style::default()))
+        .block(Block::default().borders(Borders::NONE))
+        .alignment(Alignment::Left);
+    let value_paragraph = Paragraph::new(Span::styled(value, Style::default()))
+        .block(Block::default().borders(Borders::NONE))
+        .alignment(Alignment::Left);
+    f.render_widget(label_paragraph, label_chunk);
+    f.render_widget(value_paragraph, value_chunk);
+}
+
 #[allow(clippy::cast_possible_truncation)]
 fn render_individual_cpu<B: Backend>(
     f: &mut Frame<B>,
@@ -120,7 +137,6 @@ fn render_cpu_stats<B: Backend>(f: &mut Frame<B>, sys: &System, cpus: &[&Cpu], c
 }
 
 #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-#[allow(clippy::too_many_lines)] // for now
 fn render_mem_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     let total_mem = sys.total_memory();
     let used_mem = sys.used_memory();
@@ -190,64 +206,129 @@ fn render_mem_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     f.render_widget(bar_paragraph, mem_num_chunks[0]);
 
     // render total memory
-    let total_mem_label_span = Span::styled("Total Memory: ".to_string(), Style::default());
-    let total_mem_num_span = Span::styled(
+    render_label_value(
+        f,
+        "Total Memory: ",
         format!("{:.2} GB", (total_mem as f64) / 1_000_000_000.0),
-        Style::default(),
+        mem_label_chunks[2],
+        mem_num_chunks[2],
     );
-    let total_mem_label_paragraph = Paragraph::new(total_mem_label_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    let total_mem_num_paragraph = Paragraph::new(total_mem_num_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    f.render_widget(total_mem_label_paragraph, mem_label_chunks[2]);
-    f.render_widget(total_mem_num_paragraph, mem_num_chunks[2]);
-
     // render available memory
-    let avail_mem_label_span = Span::styled("Avail Memory: ".to_string(), Style::default());
-    let avail_mem_num_span = Span::styled(
+    render_label_value(
+        f,
+        "Avail Memory: ",
         format!("{:.2} GB", (avail_mem as f64) / 1_000_000_000.0),
-        Style::default(),
+        mem_label_chunks[3],
+        mem_num_chunks[3],
     );
-    let avail_mem_label_paragraph = Paragraph::new(avail_mem_label_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    let avail_mem_num_paragraph = Paragraph::new(avail_mem_num_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    f.render_widget(avail_mem_label_paragraph, mem_label_chunks[3]);
-    f.render_widget(avail_mem_num_paragraph, mem_num_chunks[3]);
-
     // render used memory
-    let used_mem_label_span = Span::styled("Used Memory: ".to_string(), Style::default());
-    let used_mem_num_span = Span::styled(
+    render_label_value(
+        f,
+        "Used Memory: ",
         format!("{:.2} GB", (used_mem as f64) / 1_000_000_000.0),
-        Style::default(),
+        mem_label_chunks[4],
+        mem_num_chunks[4],
     );
-    let used_mem_label_paragraph = Paragraph::new(used_mem_label_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    let used_mem_num_paragraph = Paragraph::new(used_mem_num_span)
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-    f.render_widget(used_mem_label_paragraph, mem_label_chunks[4]);
-    f.render_widget(used_mem_num_paragraph, mem_num_chunks[4]);
-
     // render free memeory
-    let free_mem_label_span = Span::styled("Free Memory: ".to_string(), Style::default());
-    let free_mem_num_span = Span::styled(
+    render_label_value(
+        f,
+        "Free Memory: ",
         format!("{:.2} MB", (free_mem as f64) / 1_000_000.0),
-        Style::default(),
+        mem_label_chunks[5],
+        mem_num_chunks[5],
     );
-    let free_mem_label_paragraph = Paragraph::new(free_mem_label_span)
+}
+
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+fn render_swp_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
+    let total_swp = sys.total_swap();
+    let used_swp = sys.used_swap();
+    let free_swp = sys.free_swap();
+
+    let swp_sub_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(0)
+        //                           swp: XX.XX%    [|||       ]
+        //                            Total swp:    XX.XX GB
+        //                         ...
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(chunk);
+
+    let swp_label_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(1), // percentage swp
+            Constraint::Length(1), // spacing
+            Constraint::Length(1), // total swp
+            Constraint::Length(1), // used swp
+            Constraint::Length(1), // free swp
+        ])
+        .split(swp_sub_chunks[0]);
+
+    let swp_num_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(1), // percentage swp
+            Constraint::Length(1), // spacing
+            Constraint::Length(1), // total swp
+            Constraint::Length(1), // used swp
+            Constraint::Length(1), // free swp
+        ])
+        .split(swp_sub_chunks[1]);
+
+    // render swp percentage
+    let prefix = Span::styled("swp: ".to_string(), Style::default());
+    let percent = ((used_swp as f64 / total_swp as f64) * 100.0) as f32;
+    let percent_color = color_severity(format!("{percent:.2}%"), percent);
+    let formatted_percent = Spans::from(vec![prefix, percent_color]);
+    let percent_paragraph = Paragraph::new(formatted_percent)
         .block(Block::default().borders(Borders::NONE))
         .alignment(Alignment::Left);
-    let free_mem_num_paragraph = Paragraph::new(free_mem_num_span)
+    f.render_widget(percent_paragraph, swp_label_chunks[0]);
+
+    // render swp bar
+    let num_bars: usize = (percent / 10.0) as usize;
+    let mut severity_string = "|".repeat(num_bars);
+    while severity_string.len() < 10 {
+        severity_string.push(' ');
+    }
+    let severity_bar = color_severity(severity_string, percent);
+    let severity_span = Spans::from(vec![
+        Span::styled("[ ".to_string(), Style::default()),
+        severity_bar,
+        Span::styled(" ]".to_string(), Style::default()),
+    ]);
+    let bar_paragraph = Paragraph::new(severity_span)
         .block(Block::default().borders(Borders::NONE))
         .alignment(Alignment::Left);
-    f.render_widget(free_mem_label_paragraph, mem_label_chunks[5]);
-    f.render_widget(free_mem_num_paragraph, mem_num_chunks[5]);
+    f.render_widget(bar_paragraph, swp_num_chunks[0]);
+
+    // render total swp
+    render_label_value(
+        f,
+        "Total swp: ",
+        format!("{:.2} GB", (total_swp as f64) / 1_000_000_000.0),
+        swp_label_chunks[2],
+        swp_num_chunks[2],
+    );
+    // render used swp
+    render_label_value(
+        f,
+        "Used swp: ",
+        format!("{:.2} GB", (used_swp as f64) / 1_000_000_000.0),
+        swp_label_chunks[3],
+        swp_num_chunks[3],
+    );
+    // render free swp
+    render_label_value(
+        f,
+        "Free swp: ",
+        format!("{:.2} GB", (free_swp as f64) / 1_000_000_000.0),
+        swp_label_chunks[4],
+        swp_num_chunks[4],
+    );
 }
 
 pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) -> Vec<Rect> {
@@ -258,16 +339,17 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
     // splits the stats chunk into three chunks
     // 1. CPU
     // 2. Memory
-    // 3. Something else
+    // 3. swp
+    // 4. Something else
     let sub_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .margin(1)
+        .horizontal_margin(1)
         .constraints(
             [
                 Constraint::Percentage(25), // cpu
-                Constraint::Percentage(25), // mem
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
+                Constraint::Percentage(20), // mem
+                Constraint::Percentage(15), // swp
+                Constraint::Percentage(40), // TBD
             ]
             .as_ref(),
         )
@@ -279,6 +361,9 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
 
     // render mem stats
     render_mem_stats(f, sys, sub_chunks[1]);
+
+    // render swp stats
+    render_swp_stats(f, sys, sub_chunks[2]);
 
     sub_chunks
 }
