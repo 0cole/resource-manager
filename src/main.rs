@@ -1,4 +1,4 @@
-mod graphs;
+mod processes;
 mod stats;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -30,7 +30,7 @@ fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System, disks: &Disks) -> Re
             .split(f.size());
 
         stats::create_stats_chunk(f, sys, disks, chunks[0]);
-        graphs::create_graph_chunk(f, sys, chunks[1]);
+        processes::create_processes_chunk(f, sys, chunks[1]);
     })?;
     Ok(())
 }
