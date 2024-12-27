@@ -10,7 +10,7 @@ use std::{
     time,
 };
 use std::{thread, time::Duration};
-use sysinfo::System;
+use sysinfo::{Disks, System};
 use tui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
@@ -21,7 +21,7 @@ fn refresh_system(sys: &mut System) {
     sys.refresh_all();
 }
 
-fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System) -> Result<()> {
+fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System, disks: &Disks) -> Result<()> {
     terminal.draw(|f| {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -29,7 +29,7 @@ fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System) -> Result<()> {
             .constraints([Constraint::Length(40), Constraint::Length(50)].as_ref())
             .split(f.size());
 
-        stats::create_stats_chunk(f, sys, chunks[0]);
+        stats::create_stats_chunk(f, sys, disks, chunks[0]);
         graphs::create_graph_chunk(f, sys, chunks[1]);
     })?;
     Ok(())
@@ -42,6 +42,7 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     let mut sys = System::new_all();
+    let disks = Disks::new_with_refreshed_list();
 
     let mut tick = 0;
 
@@ -49,7 +50,7 @@ fn main() -> Result<()> {
         // every 10 ticks (1 sec) redraw tui
         if tick % 10 == 0 {
             refresh_system(&mut sys);
-            ui(&mut terminal, &sys)?;
+            ui(&mut terminal, &sys, &disks)?;
         }
 
         // exit if q is pressed

@@ -1,4 +1,4 @@
-use sysinfo::{Cpu, System};
+use sysinfo::{Cpu, Disks, System};
 use tui::{
     backend::Backend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -331,6 +331,112 @@ fn render_swp_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     );
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
+fn render_disk_stats<B: Backend>(f: &mut Frame<B>, disks: &Disks, chunk: Rect) {
+    let num_disks = disks.len();
+
+    let constraints =
+        vec![Constraint::Percentage(100 / (u16::try_from(num_disks).unwrap())); num_disks];
+
+    let disk_sub_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints(constraints)
+        .split(chunk);
+
+    for (i, disk) in disks.list().iter().enumerate() {
+        let total_space = disk.total_space();
+        let available_space = disk.available_space();
+        let used_space = total_space - available_space;
+        let percentage_used = ((used_space as f64 / total_space as f64) * 100.0) as f32;
+        let name = disk.name();
+        let kind = disk.kind();
+        let fs = disk.file_system();
+        let mount_point = disk.mount_point();
+
+        let title = format!("Disk {i}");
+        let outer_block = Block::default().title(title).borders(Borders::ALL);
+        f.render_widget(outer_block, disk_sub_chunks[i]);
+
+        let disk_chunk = Layout::default()
+            .direction(Direction::Horizontal)
+            .horizontal_margin(1)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(disk_sub_chunks[i]);
+
+        let disk_label_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+            ])
+            .split(disk_chunk[0]);
+
+        let disk_value_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Length(1),
+            ])
+            .split(disk_chunk[1]);
+
+        // render mount point
+        render_label_value(
+            f,
+            "Mount Point:",
+            mount_point.to_str().unwrap().to_string(),
+            disk_label_chunks[0],
+            disk_value_chunks[0],
+        );
+
+        // render disk name
+        render_label_value(
+            f,
+            "Name: ",
+            name.to_str().unwrap().to_string(),
+            disk_label_chunks[1],
+            disk_value_chunks[1],
+        );
+
+        // render disk usage
+        let percent_label_paragraph = Paragraph::new("Usage: ")
+            .block(Block::default().borders(Borders::NONE))
+            .alignment(Alignment::Left);
+        f.render_widget(percent_label_paragraph, disk_label_chunks[2]);
+        let percent_color = color_severity(format!("{percentage_used:.2}%"), percentage_used);
+        let percent_paragraph = Paragraph::new(percent_color)
+            .block(Block::default().borders(Borders::NONE))
+            .alignment(Alignment::Right);
+        f.render_widget(percent_paragraph, disk_value_chunks[2]);
+
+        // render disk fs
+        render_label_value(
+            f,
+            "Filesystem: ",
+            fs.to_str().unwrap().to_string(),
+            disk_label_chunks[3],
+            disk_value_chunks[3],
+        );
+
+        // render disk kind
+        render_label_value(
+            f,
+            "Kind: ",
+            kind.to_string(),
+            disk_label_chunks[4],
+            disk_value_chunks[4],
+        );
+    }
+}
+
 fn render_system_stats<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     let host_name = System::host_name();
     let version = System::os_version();
@@ -417,7 +523,12 @@ fn render_system_stats<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     );
 }
 
-pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) -> Vec<Rect> {
+pub fn create_stats_chunk<B: Backend>(
+    f: &mut Frame<B>,
+    sys: &System,
+    disks: &Disks,
+    chunk: Rect,
+) -> Vec<Rect> {
     // draw outer block for stats
     let outer_block = Block::default().title("Stats").borders(Borders::ALL);
     f.render_widget(outer_block, chunk);
@@ -429,7 +540,7 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
     // 1. CPU
     // 2. Memory
     // 3. swp
-    // 4. something else
+    // 4. disk usage
     // 5. system metadata
     let sub_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -455,6 +566,9 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
 
     // render swp stats
     render_swp_stats(f, sys, sub_chunks[2]);
+
+    // render disk stats
+    render_disk_stats(f, disks, sub_chunks[3]);
 
     // render sys metadata stats
     render_system_stats(f, sub_chunks[4]);
