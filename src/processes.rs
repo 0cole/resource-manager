@@ -1,37 +1,21 @@
 use sysinfo::{Process, System};
 use tui::{
     backend::Backend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::Style,
-    text::{Span, Spans},
-    widgets::{Block, Borders, Paragraph},
+    layout::{Constraint, Rect},
+    style::{Modifier, Style},
+    widgets::{Block, Borders, Cell, Row, Table},
     Frame,
 };
 
-fn render_process<B: Backend>(f: &mut Frame<B>, index: usize, process: &Process, chunk: Rect) {
-    let pid = process.pid();
-    let name = process.name();
+fn add_process(_index: usize, process: &Process, rows: &mut Vec<Row>) {
+    let pid = process.pid().to_string();
+    let name = process.name().to_string_lossy().to_string();
+    let mem = process.memory().to_string();
 
-    let process_sub_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .margin(1)
-        .constraints([
-            Constraint::Percentage(5),
-            Constraint::Percentage(90),
-            Constraint::Percentage(5),
-        ]);
+    let cells = vec![pid, name, mem].into_iter().map(Cell::from);
 
-    // render pid
-    let pid_paragraph = Paragraph::new(pid.to_string())
-        .block(Block::default().borders(Borders::NONE))
-        .alignment(Alignment::Left);
-
-    // render name
-    // let process_paragraph = Paragraph::new(process_span)
-    //     .block(Block::default().borders(Borders::NONE))
-    //     .alignment(Alignment::Left);
-
-    f.render_widget(pid_paragraph, chunk);
+    let row = Row::new(cells);
+    rows.push(row);
 }
 
 pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
@@ -43,19 +27,29 @@ pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk:
         .collect();
     // sort by memory size in descending order
     processes.sort_by_key(|b| std::cmp::Reverse(b.memory()));
-    let num_processes = processes.len();
 
-    let outer_block = Block::default().title("Processes").borders(Borders::ALL);
-    f.render_widget(outer_block, chunk);
-
-    let constraints = vec![Constraint::Length(1); num_processes];
-    let process_chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints(constraints)
-        .split(chunk);
+    let header_cells = ["PID", "Name", "Memory (Bytes)"].iter().map(|h| {
+        Cell::from(*h).style(
+            Style::default()
+                .fg(tui::style::Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
+    });
+    let header = Row::new(header_cells);
+    let mut process_rows: Vec<Row> = vec![];
 
     for (index, process) in processes.iter().enumerate() {
-        render_process(f, index, process, process_chunks[index]);
+        add_process(index, process, &mut process_rows);
     }
+
+    let table = Table::new(process_rows)
+        .header(header)
+        .block(Block::default().title("Processes").borders(Borders::ALL))
+        .widths(&[
+            Constraint::Percentage(20),
+            Constraint::Percentage(60),
+            Constraint::Percentage(20),
+        ]);
+
+    f.render_widget(table, chunk);
 }
