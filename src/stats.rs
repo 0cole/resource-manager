@@ -1,4 +1,4 @@
-use sysinfo::{Cpu, Networks, System};
+use sysinfo::{Cpu, System};
 use tui::{
     backend::Backend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -331,14 +331,93 @@ fn render_swp_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     );
 }
 
-fn render_network_stats<B: Backend>(f: &mut Frame<B>, net: &Networks, chunk: Rect) {}
+fn render_system_stats<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
+    let host_name = System::host_name();
+    let version = System::os_version();
+    let uptime = System::uptime();
+    let arch = System::cpu_arch();
+    let os = System::name();
 
-pub fn create_stats_chunk<B: Backend>(
-    f: &mut Frame<B>,
-    sys: &System,
-    net: &Networks,
-    chunk: Rect,
-) -> Vec<Rect> {
+    let outer_block = Block::default().title("System").borders(Borders::ALL);
+    f.render_widget(outer_block, chunk);
+
+    let system_sub_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(1)
+        .constraints([Constraint::Percentage(33), Constraint::Percentage(67)].as_ref())
+        .split(chunk);
+
+    let system_label_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ])
+        .split(system_sub_chunks[0]);
+
+    let system_value_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(1)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ])
+        .split(system_sub_chunks[1]);
+
+    // render host name
+    render_label_value(
+        f,
+        "Hostname: ",
+        host_name.unwrap(),
+        system_label_chunks[0],
+        system_value_chunks[0],
+    );
+
+    // render version
+    render_label_value(
+        f,
+        "Version: ",
+        version.unwrap(),
+        system_label_chunks[1],
+        system_value_chunks[1],
+    );
+
+    // render uptime
+    render_label_value(
+        f,
+        "Up-time: ",
+        uptime.to_string(),
+        system_label_chunks[2],
+        system_value_chunks[2],
+    );
+
+    // render architecture
+    render_label_value(
+        f,
+        "CPU Arch: ",
+        arch,
+        system_label_chunks[3],
+        system_value_chunks[3],
+    );
+
+    // render operating system
+    render_label_value(
+        f,
+        "OS: ",
+        os.unwrap(),
+        system_label_chunks[4],
+        system_value_chunks[4],
+    );
+}
+
+pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) -> Vec<Rect> {
     // draw outer block for stats
     let outer_block = Block::default().title("Stats").borders(Borders::ALL);
     f.render_widget(outer_block, chunk);
@@ -351,17 +430,18 @@ pub fn create_stats_chunk<B: Backend>(
     // 2. Memory
     // 3. swp
     // 4. something else
-    // 5. network
+    // 5. system metadata
     let sub_chunks = Layout::default()
         .direction(Direction::Vertical)
         .horizontal_margin(1)
+        .vertical_margin(1)
         .constraints(
             [
-                Constraint::Length(num_cpus + 4), // cpu
-                Constraint::Length(8),            // mem
-                Constraint::Length(7),            // swp
-                Constraint::Percentage(40),       // TBD
-                Constraint::Length(8),
+                Constraint::Percentage(7 + (num_cpus * 2)), // cpu
+                Constraint::Percentage(16),                 // mem
+                Constraint::Percentage(14),                 // swp
+                Constraint::Percentage(31),                 // TBD
+                Constraint::Percentage(20),                 // metadata
             ]
             .as_ref(),
         )
@@ -376,8 +456,8 @@ pub fn create_stats_chunk<B: Backend>(
     // render swp stats
     render_swp_stats(f, sys, sub_chunks[2]);
 
-    // render network stats
-    render_network_stats(f, net, sub_chunks[4]);
+    // render sys metadata stats
+    render_system_stats(f, sub_chunks[4]);
 
     sub_chunks
 }
