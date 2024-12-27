@@ -1,4 +1,4 @@
-use sysinfo::{Cpu, System};
+use sysinfo::{Cpu, Networks, System};
 use tui::{
     backend::Backend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -331,32 +331,43 @@ fn render_swp_stats<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
     );
 }
 
-pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) -> Vec<Rect> {
+fn render_network_stats<B: Backend>(f: &mut Frame<B>, net: &Networks, chunk: Rect) {}
+
+pub fn create_stats_chunk<B: Backend>(
+    f: &mut Frame<B>,
+    sys: &System,
+    net: &Networks,
+    chunk: Rect,
+) -> Vec<Rect> {
     // draw outer block for stats
     let outer_block = Block::default().title("Stats").borders(Borders::ALL);
     f.render_widget(outer_block, chunk);
 
-    // splits the stats chunk into three chunks
+    let cpus = get_individual_cpus(sys);
+    let num_cpus = u16::try_from(sys.cpus().len()).unwrap();
+
+    // splits the stats chunk into four chunks
     // 1. CPU
     // 2. Memory
     // 3. swp
-    // 4. Something else
+    // 4. something else
+    // 5. network
     let sub_chunks = Layout::default()
         .direction(Direction::Vertical)
         .horizontal_margin(1)
         .constraints(
             [
-                Constraint::Percentage(25), // cpu
-                Constraint::Percentage(20), // mem
-                Constraint::Percentage(15), // swp
-                Constraint::Percentage(40), // TBD
+                Constraint::Length(num_cpus + 4), // cpu
+                Constraint::Length(8),            // mem
+                Constraint::Length(7),            // swp
+                Constraint::Percentage(40),       // TBD
+                Constraint::Length(8),
             ]
             .as_ref(),
         )
         .split(chunk);
 
     // render cpu stats
-    let cpus = get_individual_cpus(sys);
     render_cpu_stats(f, sys, &cpus, sub_chunks[0]);
 
     // render mem stats
@@ -364,6 +375,9 @@ pub fn create_stats_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rec
 
     // render swp stats
     render_swp_stats(f, sys, sub_chunks[2]);
+
+    // render network stats
+    render_network_stats(f, net, sub_chunks[4]);
 
     sub_chunks
 }
