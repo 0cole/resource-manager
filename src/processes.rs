@@ -10,20 +10,25 @@ use tui::{
 #[allow(clippy::cast_precision_loss)]
 fn add_process(_index: usize, process: &Process, rows: &mut Vec<Row>) {
     let pid = process.pid().to_string();
-    // name should be truncated after 25 chars
+    // name should be truncated after 21 chars
     let name = process
         .name()
         .to_string_lossy()
         .to_string()
         .chars()
-        .take(25)
+        .take(21)
         .collect();
     let mem = (process.memory() as f64) / (1_000_000.0);
     let mem_fmt = format!("{mem:.2}");
     let cpu_usage = format!("{:.2}%", process.cpu_usage());
     let uptime = format!("{}", process.run_time());
+    let euid_egid_fmt = format!(
+        "{}/{}",
+        **process.effective_user_id().unwrap(),
+        *process.effective_group_id().unwrap()
+    );
 
-    let cells = vec![pid, name, mem_fmt, cpu_usage, uptime]
+    let cells = vec![pid, name, mem_fmt, cpu_usage, uptime, euid_egid_fmt]
         .into_iter()
         .map(Cell::from);
 
@@ -55,7 +60,7 @@ pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk:
     // sort by memory size in descending order
     processes.sort_by_key(|b| std::cmp::Reverse(b.memory()));
 
-    let header_cells = ["PID", "Name", "Mem (MB)", "CPU", "Uptime (s)"]
+    let header_cells = ["PID", "Name", "Mem (MB)", "CPU", "Uptime (s)", "EUID/EGID"]
         .iter()
         .map(|h| {
             Cell::from(*h).style(
@@ -76,11 +81,12 @@ pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk:
         .header(header)
         .block(Block::default().borders(Borders::NONE))
         .widths(&[
-            Constraint::Percentage(10),
-            Constraint::Percentage(30),
-            Constraint::Percentage(15),
-            Constraint::Percentage(10),
-            Constraint::Percentage(15),
+            Constraint::Percentage(10), // pid
+            Constraint::Percentage(32), // name
+            Constraint::Percentage(13), // memory
+            Constraint::Percentage(10), // cpu
+            Constraint::Percentage(15), // uptime
+            Constraint::Percentage(18), // euid/egid
         ]);
 
     f.render_widget(table, inner_chunk[0]);
