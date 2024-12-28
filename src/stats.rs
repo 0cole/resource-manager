@@ -444,14 +444,20 @@ fn render_system_stats<B: Backend>(f: &mut Frame<B>, chunk: Rect) {
     let arch = System::cpu_arch();
     let os = System::name();
 
+    let padding_chunk = Layout::default()
+        .direction(Direction::Horizontal)
+        .horizontal_margin(1)
+        .constraints([Constraint::Min(1)].as_ref())
+        .split(chunk);
+
     let outer_block = Block::default().title("System").borders(Borders::ALL);
-    f.render_widget(outer_block, chunk);
+    f.render_widget(outer_block, padding_chunk[0]);
 
     let system_sub_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .margin(1)
         .constraints([Constraint::Percentage(33), Constraint::Percentage(67)].as_ref())
-        .split(chunk);
+        .split(padding_chunk[0]);
 
     let system_label_chunks = Layout::default()
         .direction(Direction::Vertical)
