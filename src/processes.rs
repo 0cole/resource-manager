@@ -81,12 +81,12 @@ pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk:
         .header(header)
         .block(Block::default().borders(Borders::NONE))
         .widths(&[
-            Constraint::Percentage(10), // pid
+            Constraint::Percentage(8),  // pid
             Constraint::Percentage(32), // name
             Constraint::Percentage(13), // memory
             Constraint::Percentage(10), // cpu
-            Constraint::Percentage(15), // uptime
-            Constraint::Percentage(18), // euid/egid
+            Constraint::Percentage(16), // uptime
+            Constraint::Percentage(19), // euid/egid
         ]);
 
     f.render_widget(table, inner_chunk[0]);
