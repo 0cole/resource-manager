@@ -36,7 +36,7 @@ fn add_process(_index: usize, process: &Process, rows: &mut Vec<Row>) {
     rows.push(row);
 }
 
-pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk: Rect) {
+pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &mut System, chunk: Rect) {
     let outer_chunk = Block::default()
         .borders(Borders::ALL)
         .title("Processes")
@@ -52,6 +52,7 @@ pub fn create_processes_chunk<B: Backend>(f: &mut Frame<B>, sys: &System, chunk:
         .split(chunk);
 
     let min_memory_usage = 50_000_000; // ignore any processes <50 MB
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     let mut processes: Vec<_> = sys
         .processes()
         .values()

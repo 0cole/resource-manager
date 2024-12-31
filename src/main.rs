@@ -21,7 +21,7 @@ fn refresh_system(sys: &mut System) {
     sys.refresh_all();
 }
 
-fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &System, disks: &Disks) -> Result<()> {
+fn ui<B: Backend>(terminal: &mut Terminal<B>, sys: &mut System, disks: &Disks) -> Result<()> {
     terminal.draw(|f| {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
         // every 10 ticks (1 sec) redraw tui
         if tick % 10 == 0 {
             refresh_system(&mut sys);
-            ui(&mut terminal, &sys, &disks)?;
+            ui(&mut terminal, &mut sys, &disks)?;
         }
 
         // exit if q is pressed
